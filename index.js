@@ -1,4 +1,3 @@
-const { request, response } = require('express');
 const express = require('express');
 const app = express();
 
@@ -30,6 +29,14 @@ const persons = [
 // Define
 app.get('/api/persons', (request, response) => {
   return response.status(200).json(persons);
+});
+
+// Info endpoint
+app.get('/info', (request, response) => {
+  const html = `<div><div>Phonebook has info for ${
+    persons.length
+  }</div><div>${new Date()}</div></div>`;
+  return response.status(200).send(html);
 });
 
 // Port
