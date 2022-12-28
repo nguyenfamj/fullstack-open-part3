@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const morgan = require('morgan');
+const cors = require('cors');
 
 let persons = [
   {
@@ -25,6 +26,8 @@ let persons = [
   },
 ];
 
+app.use(cors());
+app.use(express.static('build'));
 app.use(express.json());
 
 // Setup morgan logger
@@ -93,8 +96,8 @@ app.get('/info', (request, response) => {
 });
 
 // Port
-const SERVER_PORT = 3001;
+const SERVER_PORT = process.env.PORT || '3001';
 
 app.listen(SERVER_PORT, () => {
-  console.log(`Server listening on PORT ${SERVER_PORT}`);
+  console.log(`Server running on PORT ${SERVER_PORT}`);
 });
