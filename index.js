@@ -57,6 +57,28 @@ app.delete('/api/persons/:id', (request, response) => {
   return response.status(204).end();
 });
 
+app.post('/api/persons', (request, response) => {
+  const { name, number } = request.body;
+
+  if (!name || !number) {
+    return response.status(400).send('Name or number not included in the request');
+  }
+
+  if (persons.find((person) => person.name === name || person.number === number)) {
+    return response.status(404).send('Name or number has already been added to the phonebook');
+  }
+
+  const newPerson = {
+    id: Math.floor(Math.random() * 1000 + Math.max(...persons.map((person) => person.id))),
+    name,
+    number,
+  };
+
+  persons.push(newPerson);
+
+  return response.status(200).json(newPerson);
+});
+
 // Info endpoint
 app.get('/info', (request, response) => {
   const html = `<div><div>Phonebook has info for ${
