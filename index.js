@@ -26,9 +26,21 @@ const persons = [
   },
 ];
 
-// Define
+// /api/persons
 app.get('/api/persons', (request, response) => {
   return response.status(200).json(persons);
+});
+
+app.get('/api/persons/:id', (request, response) => {
+  const id = Number(request.params.id);
+
+  const foundPerson = persons.find((person) => person.id === id);
+
+  if (!foundPerson) {
+    return response.status(404).send(`Person with id ${id} not found`);
+  }
+
+  return response.status(200).json(foundPerson);
 });
 
 // Info endpoint
