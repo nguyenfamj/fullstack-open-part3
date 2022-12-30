@@ -2,102 +2,78 @@ const express = require('express');
 const app = express();
 const morgan = require('morgan');
 const cors = require('cors');
+const { connectDB } = require('./config/db/dbConnection');
+const { Person } = require('./config/db/model/Person');
 
-let persons = [
-  {
-    id: 1,
-    name: 'Arto Hellas',
-    number: '040-123456',
-  },
-  {
-    id: 2,
-    name: 'Ada Lovelace',
-    number: '39-44-5323523',
-  },
-  {
-    id: 3,
-    name: 'Dan Abramov',
-    number: '12-43-234345',
-  },
-  {
-    id: 4,
-    name: 'Mary Poppendieck',
-    number: '39-23-6423122',
-  },
-];
+connectDB().then(() => {
+  // Port
+  const SERVER_PORT = process.env.PORT || '3001';
 
-app.use(cors());
-app.use(express.static('build'));
-app.use(express.json());
+  app.listen(SERVER_PORT, () => {
+    console.log(`Server running on PORT ${SERVER_PORT}`);
+  });
 
-// Setup morgan logger
-morgan.token('requestBody', (req, res) => JSON.stringify(req.body));
-app.use(morgan(':method :url :status :res[content-length] - :response-time ms :requestBody'));
+  app.use(cors());
+  app.use(express.static('build'));
+  app.use(express.json());
 
-// /api/persons
-app.get('/api/persons', (request, response) => {
-  return response.status(200).json(persons);
-});
+  // Setup morgan logger
+  morgan.token('requestBody', (req, res) => JSON.stringify(req.body));
+  app.use(morgan(':method :url :status :res[content-length] - :response-time ms :requestBody'));
 
-app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id);
+  // /api/persons
+  app.get('/api/persons', (request, response) => {
+    Person.find({}).then((persons) => {
+      return response.status(200).json(persons);
+    });
+  });
 
-  const foundPerson = persons.find((person) => person.id === id);
+  app.get('/api/persons/:id', (request, response) => {
+    const id = request.params.id;
 
-  if (!foundPerson) {
-    return response.status(404).send(`Person with id ${id} not found`);
-  }
+    Person.findById(id).then((foundPerson) => {
+      if (!foundPerson) {
+        return response.status(404).json({ message: `Person with id ${id} not found` });
+      }
+      return response.status(200).json(foundPerson);
+    });
+  });
 
-  return response.status(200).json(foundPerson);
-});
+  app.delete('/api/persons/:id', (request, response) => {
+    const id = Number(request.params.id);
 
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id);
+    const foundPerson = persons.find((person) => person.id === id);
 
-  const foundPerson = persons.find((person) => person.id === id);
+    if (!foundPerson) {
+      return response.status(404).send(`Person with id ${id} not found and cannot be deleted`);
+    }
 
-  if (!foundPerson) {
-    return response.status(404).send(`Person with id ${id} not found and cannot be deleted`);
-  }
+    persons = persons.filter((person) => person.id !== id);
 
-  persons = persons.filter((person) => person.id !== id);
+    return response.status(204).end();
+  });
 
-  return response.status(204).end();
-});
+  app.post('/api/persons', (request, response) => {
+    const { name, number } = request.body;
 
-app.post('/api/persons', (request, response) => {
-  const { name, number } = request.body;
+    console.log(name, number);
 
-  if (!name || !number) {
-    return response.status(400).send('Name or number not included in the request');
-  }
+    if (!name || !number) {
+      return response.status(400).send('Name or number not included in the request');
+    }
 
-  if (persons.find((person) => person.name === name || person.number === number)) {
-    return response.status(404).send('Name or number has already been added to the phonebook');
-  }
+    const newPerson = new Person({ name, number });
 
-  const newPerson = {
-    id: Math.floor(Math.random() * 1000 + Math.max(...persons.map((person) => person.id))),
-    name,
-    number,
-  };
+    newPerson.save().then((savedPerson) => {
+      return response.status(200).json(savedPerson);
+    });
+  });
 
-  persons.push(newPerson);
-
-  return response.status(200).json(newPerson);
-});
-
-// Info endpoint
-app.get('/info', (request, response) => {
-  const html = `<div><div>Phonebook has info for ${
-    persons.length
-  }</div><div>${new Date()}</div></div>`;
-  return response.status(200).send(html);
-});
-
-// Port
-const SERVER_PORT = process.env.PORT || '3001';
-
-app.listen(SERVER_PORT, () => {
-  console.log(`Server running on PORT ${SERVER_PORT}`);
+  // Info endpoint
+  app.get('/info', (request, response) => {
+    const html = `<div><div>Phonebook has info for ${
+      persons.length
+    }</div><div>${new Date()}</div></div>`;
+    return response.status(200).send(html);
+  });
 });
