@@ -4,6 +4,7 @@ const morgan = require('morgan');
 const cors = require('cors');
 const { connectDB } = require('./config/db/dbConnection');
 const { Person } = require('./config/db/model/Person');
+const { errorHandler } = require('./middleware/errorHandler');
 
 connectDB().then(() => {
   // Port
@@ -28,29 +29,31 @@ connectDB().then(() => {
     });
   });
 
-  app.get('/api/persons/:id', (request, response) => {
+  app.get('/api/persons/:id', (request, response, next) => {
     const id = request.params.id;
 
-    Person.findById(id).then((foundPerson) => {
-      if (!foundPerson) {
-        return response.status(404).json({ message: `Person with id ${id} not found` });
-      }
-      return response.status(200).json(foundPerson);
-    });
+    Person.findById(id)
+      .then((foundPerson) => {
+        if (!foundPerson) {
+          return response
+            .status(404)
+            .json({ message: `Person with id ${id} not found` })
+            .end();
+        }
+        return response.status(200).json(foundPerson);
+      })
+      .catch((error) => next(error));
   });
 
-  app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id);
+  app.delete('/api/persons/:id', (request, response, next) => {
+    const id = request.params.id;
 
-    const foundPerson = persons.find((person) => person.id === id);
-
-    if (!foundPerson) {
-      return response.status(404).send(`Person with id ${id} not found and cannot be deleted`);
-    }
-
-    persons = persons.filter((person) => person.id !== id);
-
-    return response.status(204).end();
+    Person.findByIdAndRemove(id)
+      .then((result) => {
+        console.log(`User ${result._id} deleted successfully`);
+        response.status(204).end();
+      })
+      .catch((error) => next(error));
   });
 
   app.post('/api/persons', (request, response) => {
@@ -69,6 +72,20 @@ connectDB().then(() => {
     });
   });
 
+  app.put('/api/persons/:id', (request, response, next) => {
+    const { name, number } = request.body;
+
+    if (!name || !number) {
+      return response.status(400).send('Name or number not included in the request');
+    }
+
+    const updatedPerson = { name, number };
+
+    Person.findByIdAndUpdate(request.params.id, updatedPerson, { new: true })
+      .then((person) => response.status(200).json(person).end())
+      .catch((error) => next(error));
+  });
+
   // Info endpoint
   app.get('/info', (request, response) => {
     const html = `<div><div>Phonebook has info for ${
@@ -76,4 +93,7 @@ connectDB().then(() => {
     }</div><div>${new Date()}</div></div>`;
     return response.status(200).send(html);
   });
+
+  // Error Handler
+  app.use(errorHandler);
 });
